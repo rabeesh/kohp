@@ -1,4 +1,6 @@
 {
+    "name": "kohp",
+    "description": "middleware only approach",
     "require": {
         "symfony/http-foundation": "^4.3",
         "aura/router": "^3.1",

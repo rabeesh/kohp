@@ -1,9 +1,10 @@
 <?php
 
+use Aura\Router\RouterContainer;
+
 // framework/index.php
 require_once __DIR__.'/vendor/autoload.php';
 require './Kohp.php';
-require './KohpRouter.php';
 
 $app = new Kohp();
 
@@ -15,15 +16,42 @@ $app->use(function ($ctx, $next) {
     echo "end of execute \n";
 });
 
-// use the router
-$kohpRouter = new KohpRouter();
-$map = $kohpRouter->getMap();
+// Kohp use aura router as router
+// Can configure any route engine
+$routerContainer = new RouterContainer();
+$app->ctx->router = $routerContainer;
+$map = $routerContainer->getMap();
+
 $map->get('blog.read', '/blog/{id}', function ($ctx) {
     $id = (int) $ctx->req->getAttribute('id');
-    $ctx->res->getBody()->write("You asked for blog entry {$ctx->value} {$id}. \n" );
+    $ctx->res->getBody()->write("You asked for blog entry of {$ctx->value} {$id}. \n" );
 });
 
-// kohp use aura router as router
-// can configure any router
-$app->use($kohpRouter);
+$app->use(function ($ctx, $next) {
+    $request = $ctx->req;
+    $response = $ctx->res;
+
+    /// get the route matcher from the container ...
+    $matcher = $ctx->router->getMatcher();
+    $route = $matcher->match($request);
+
+    if (!$route) {
+        echo "No route found for the request.";
+        exit;
+    }
+
+    // add route attributes to the request
+    foreach ($route->attributes as $key => $val) {
+        $request = $request->withAttribute($key, $val);
+    }
+    $ctx->req = $request;
+
+    // dispatch the request to the route handler.
+    // (consider using https://github.com/auraphp/Aura.Dispatcher
+    // in place of the one callable below.)
+    $callable = $route->handler;
+    $callable($ctx);
+    echo $ctx->res->getBody();
+});
+
 $app->run();
